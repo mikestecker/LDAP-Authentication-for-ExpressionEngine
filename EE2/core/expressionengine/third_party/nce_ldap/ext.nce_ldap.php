@@ -243,7 +243,7 @@ class Nce_ldap_ext {
 	function sync_user_details($user_info)
 	{
 			// Sync EE password to match LDAP (if account exists)
-			$encrypted_password = $this->EE->functions->hash(stripslashes($user_info['password']));
+			$encrypted_password = hash('sha1',stripslashes($user_info['password']));
 			$sql = 'UPDATE exp_members SET password = \''.$this->EE->db->escape_str($encrypted_password).'\' WHERE username = \''.$this->EE->db->escape_str($user_info['username']).'\'';
 			$this->debug_print('Updating user with SQL: '.$sql);
 			$this->EE->db->query($sql);
@@ -273,17 +273,18 @@ class Nce_ldap_ext {
 
 			$data['screen_name']      = $user_info['cn'][0];
 			$data['username']         = $user_info['username'];
+			//$data['username']         = $user_info['sAMAccountName'][0];
 			$data['password']         = $encrypted_password;
 			$data['email']            = $user_info['mail'][0];
-			$data['ip_address']       = '0.0.0.0';
+			$data['ip_address']       = ee()->input->ip_address();
 			$data['unique_id']        = $this->EE->functions->random('encrypt');
 			$data['join_date']        = $this->EE->localize->now;
 			$data['language']         = 'english';
-			$data['timezone']         = 'UTC';
+			$data['timezone']         = 'America/Los_Angeles';
 			$data['daylight_savings'] = 'n';
-			$data['time_format']      = 'eu';
+			$data['time_format']      = 'us';
 			$data['group_id']         = $this->settings['created_user_group'];
-
+			$data['bio']              = 'description: ' . $user_info['description'][0] . ', mail: ' . $user_info['mail'][0] . ', username: ' . $user_info['username'] . ', name: ' . $user_info['name'][0] . ', cn: ' . $user_info['cn'][0] . ', company: ' . $user_info['company'][0] . ', department: ' . $user_info['department'][0] . ', displayName: ' . $user_info['displayName'][0] . ', distinguishedName: ' . $user_info['distinguishedName'][0] . ', givenName: ' . $user_info['givenName'][0] . ', sn: ' . $user_info['sn'][0] . ', physicalDeliveryOfficeName: ' . $user_info['physicalDeliveryOfficeName'][0] . ', sAmAccountName: ' . $user_info['sAmAccountName'][0] . ', telephoneNumber: ' . $user_info['telephoneNumber'][0] . ', title: ' . $user_info['title'][0] . ', userPrincipleName: ' . $user_info['userPrincipleName'][0] . ', EXTRAS :: ' . ', initials: ' . $user_info['initials'][0] . ', otherTelephone: ' . $user_info['otherTelephone'][0] . ', wWWHomePage: ' . $user_info['wWWHomePage'][0] . ', url: ' . $user_info['url'][0] . ', manager: ' . $user_info['manager'][0] . ', homePhone: ' . $user_info['homePhone'][0] . ', otherHomePhone: ' . $user_info['otherHomePhone'][0] . ', mobile: ' . $user_info['mobile'][0] . ', otherMobile: ' . $user_info['otherMobile'][0] . ', ipPhone: ' . $user_info['ipPhone'][0] . ', info: ' . $user_info['info'][0];
 			$this->debug_print('Inserting user with data: '.print_r($data, TRUE));
 
 			$this->EE->load->model('member_model');
@@ -298,7 +299,7 @@ class Nce_ldap_ext {
 
 				$this->EE->stats->update_member_stats();
 
-				$this->settings['mail_message'] = str_replace('{name}',     $user_info['cn'][0],    $this->settings['mail_message']);
+				$this->settings['mail_message'] = str_replace('{name}',     $user_info['uid'][0],    $this->settings['mail_message']);
 				$this->settings['mail_message'] = str_replace('{username}', $user_info['username'], $this->settings['mail_message']);
 				$this->settings['mail_message'] = str_replace('{host}',     $_SERVER['HTTP_HOST'],  $this->settings['mail_message']);
 
@@ -386,6 +387,7 @@ class Nce_ldap_ext {
 		else
 		{
 			$this->debug_print('Binding with user: ['.$ldap_search_user.']-['.$ldap_search_password.'] ...');
+      ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
 			$success = ldap_bind($conn, $this->ldap_encode($ldap_search_user), $this->ldap_encode($ldap_search_password)); // bind with credentials
 		}
 		$this->debug_print('Bind result is '.$success);
